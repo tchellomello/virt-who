@@ -27,6 +27,7 @@ import uuid
 
 from six.moves.configparser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
 from virtwho import log, SAT5, SAT6
+from virtwho.config_validator import VW_SCHEMA
 from .password import Password
 from binascii import unhexlify
 from . import util
@@ -1351,6 +1352,19 @@ def _check_effective_config_validity(effective_config):
     return effective_config, validation_errors
 
 
+def _validate_all_drop_dir_config_sections(config_sections):
+    """
+    Validate the options received from each config file
+    present in the drop.d directory and validate.
+
+    :param config_sections: configuration from drop.d files
+    """
+    config_sections_validated = {}
+    for section, config in config_sections.items():
+        _validated = VW_SCHEMA(config)
+        config_sections_validated[section] = _validated
+    return config_sections_validated
+
 def init_config(env_options, cli_options, config_dir=None):
     """
     Initialize and return the effective virt-who configuration
@@ -1428,6 +1442,8 @@ def init_config(env_options, cli_options, config_dir=None):
         all_sections_to_add.update(vw_conf)
         # also read all sections in conf files in the drop dir
         all_sections_to_add.update(effective_config.all_drop_dir_config_sections(config_dir=config_dir))
+        # validate the options read from the drop dir
+        all_sections_to_add = _validate_all_drop_dir_config_sections(all_sections_to_add)
 
     # We should ignore any additional sections defined as VW_GLOBAL
     # or VW_VIRT_DEFAULTS_SECTION_NAME as we've already parsed those
